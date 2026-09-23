@@ -28,7 +28,7 @@ var ErrRestartRequired = errors.New("update installed; restart required")
 var panelUpdateTo = selfupdate.UpdateTo
 
 var (
-	CurrentVersion string = "0.1.10"
+	CurrentVersion string = "0.1.11"
 	Repo           string = "allen0039/komari_agent"
 	PanelBaseURL   string
 )
