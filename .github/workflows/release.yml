@@ -1,0 +1,65 @@
+name: Release Agent
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - {os: linux, arch: amd64}
+          - {os: linux, arch: arm64}
+          - {os: darwin, arch: amd64}
+          - {os: darwin, arch: arm64}
+          - {os: windows, arch: amd64}
+          - {os: windows, arch: arm64}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          name="komari-agent-${GOOS}-${GOARCH}"
+          if [[ "$GOOS" == windows ]]; then name="$name.exe"; fi
+          go build -trimpath -ldflags="-s -w -X github.com/allen0039/komari_agent/update.CurrentVersion=$version" -o "$name" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: komari-agent-*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp install.sh install.ps1 dist/
+          (cd dist && sha256sum komari-agent-* install.sh install.ps1 > SHA256SUMS)
+          gh release create "$TAG" dist/* --title "$TAG" --generate-notes
