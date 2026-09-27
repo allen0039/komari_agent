@@ -18,7 +18,6 @@ const (
 	MethodAgentConfigReport = "agent.config.report"
 	MethodAgentUpdate       = "agent.update"
 	MethodAgentUpdateResult = "agent.updateResult"
-	MethodAgentTraceResult  = "agent.traceResult"
 )
 
 type Request struct {
@@ -122,10 +121,6 @@ func BuildPingResultPayload(taskID uint, pingType string, value int, finishedAt 
 			"finished_at": finishedAt.Format(time.RFC3339Nano),
 		},
 	}
-}
-
-func BuildTraceResultPayload(result TraceResult) Request {
-	return Request{JSONRPC: Version, Method: MethodAgentTraceResult, Params: result}
 }
 
 func BindParams(raw interface{}, target interface{}) error {
