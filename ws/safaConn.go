@@ -7,6 +7,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const writeWait = 5 * time.Second
+
 type SafeConn struct {
 	conn *websocket.Conn
 	mu   sync.Mutex
@@ -22,12 +24,18 @@ func NewSafeConn(conn *websocket.Conn) *SafeConn {
 func (sc *SafeConn) WriteMessage(messageType int, data []byte) error {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
+	if err := sc.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+		return err
+	}
 	return sc.conn.WriteMessage(messageType, data)
 }
 
 func (sc *SafeConn) WriteJSON(v interface{}) error {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
+	if err := sc.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+		return err
+	}
 	return sc.conn.WriteJSON(v)
 }
 

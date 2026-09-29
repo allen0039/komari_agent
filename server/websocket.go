@@ -33,8 +33,10 @@ var (
 )
 
 const (
-	v2SeenEventTTL   = 10 * time.Minute
-	v2SeenEventLimit = 4096
+	v2SeenEventTTL      = 10 * time.Minute
+	v2SeenEventLimit    = 4096
+	websocketPingPeriod = 5 * time.Second
+	websocketPongWait   = 15 * time.Second
 )
 
 var v2Capabilities = []string{"ping", "message", "event", "config:v1", "update-status:v1"}
@@ -54,7 +56,7 @@ func EstablishWebSocketConnection() {
 	defer dataTicker.Stop()
 	var lastReportAt time.Time
 
-	heartbeatTicker := time.NewTicker(30 * time.Second)
+	heartbeatTicker := time.NewTicker(websocketPingPeriod)
 	defer heartbeatTicker.Stop()
 
 	var readDone <-chan struct{}
@@ -390,6 +392,13 @@ func connectWebSocket(websocketEndpoint string) (*ws.SafeConn, error) {
 		return nil, err
 	}
 
+	if err := conn.SetReadDeadline(time.Now().Add(websocketPongWait)); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(websocketPongWait))
+	})
 	return ws.NewSafeConn(conn), nil
 }
 
